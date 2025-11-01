@@ -1,4 +1,4 @@
-import os, sys,socket, threading, psutil, time, shutil, pathlib, requests, re, json, subprocess, glob, traceback
+import os, sys,socket, threading, time, requests, json, glob, traceback
 import tkinter as tk
 from tkinter import messagebox
 from logger import Logger as Log
@@ -7,26 +7,19 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.relative_locator import locate_with
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, StaleElementReferenceException, ElementNotInteractableException, ElementNotVisibleException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, StaleElementReferenceException, ElementNotInteractableException, ElementNotVisibleException, WebDriverException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from typing import Optional, List, Union, Callable
 from webdriver_manager.chrome import ChromeDriverManager
 
 url="https://ecp.mis66.ru/"
-users=[{'username':'GIBPlenkin3','password':'GIBPlenkin317'},
-       {'username':'GIBPlenkin4','password':'GIBPlenkin417'}]
-# username='GIBPlenkin2'
-# password='GIBPlenkin217'
-today = "03.07.2025"
-yesterday = (date.today() - timedelta(days=1)).strftime("%d.%m.%Y")
-day_defore_yesterday = (date.today() - timedelta(days=2)).strftime("%d.%m.%Y")
+users=[{'username':os.getenv('ECP_USERNAME_2'),'password':os.getenv('ECP_PASSWORD_2')},
+       {'username':os.getenv('ECP_USERNAME_3'),'password':os.getenv('ECP_PASSWORD_3')}]
 forbidden_ds=['U07.','B20.','B21.','B22.','B23.','C34.','S22.']
-tg_token='8068921919:AAFZq04-eejhUxqueKwym3Q6D4vCrpoJrIE'
-tg_chat_id='655062942'
+tg_token=os.getenv('TELEGRAM_BOT_TOKEN')
+tg_chat_id=os.getenv('TELEGRAM_CHAT_ID')
 
 window_width='1920'
 window_height='2500'
@@ -65,7 +58,6 @@ class DriverManager:
     @staticmethod
     def _find_free_port():
         from contextlib import closing
-        
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
             s.bind(('', 0))
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -81,24 +73,6 @@ class DriverManager:
         Log.info(f'DriverManager.start_driver: restart={restart}, url={url}')
         cls._profile_directory = os.path.join(cls._profile_directory_base, f"User_{num_instance}")
         os.makedirs(cls._profile_directory, exist_ok=True)
-        # def cleanup_processes():
-        #     """Clean up all Chrome and chromedriver processes"""
-        #     try:
-        #         for proc in psutil.process_iter(['pid', 'name']):
-        #             try:
-        #                 if proc.info['name'] and 'chrome' in proc.info['name'].lower():
-        #                     proc.kill()
-        #                     Log.info(f"Killed Chrome process: {proc.info['pid']}")
-        #                 elif proc.info['name'] and 'chromedriver' in proc.info['name'].lower():
-        #                     proc.kill()
-        #                     Log.info(f"Killed chromedriver process: {proc.info['pid']}")
-        #             except (psutil.NoSuchProcess, psutil.AccessDenied):
-        #                 continue
-        #             except Exception as e:
-        #                 Log.warning(f"Error killing process {proc.info['pid']}: {str(e)}")
-        #     except Exception as e:
-        #         Log.warning(f"Error during process cleanup: {str(e)}")
-    
         def configure_chrome_options():
             """Configure Chrome options with memory management settings"""
             options = Options()
@@ -121,12 +95,9 @@ class DriverManager:
                 "browser.cache.memory.enable": True
             }
             options.add_experimental_option("prefs", prefs)
-            
             return options
-    
         try:
             if restart:
-                # cleanup_processes()
                 time.sleep(2)
             if not restart and cls._driver is not None:
                 try:
@@ -578,31 +549,27 @@ def fill_new_tap(sign=True):
     waiting()
     fill_invalid_fields()
     Log.info('Проверяю кто врач...')
-    if 'ПЛЕНКИН АНТОН АНДРЕЕВИЧ' in get_element_value("//*[contains(text(),'Врач:')]/../../..//input[@type='text'and @aria-disabled='false']"):
-        Log.info('Врач - Пленкин')
-        is_plenkin=True
+    if os.getenv('ECP_DOCTOR_FULLNAME') in get_element_value("//*[contains(text(),'Врач:')]/../../..//input[@type='text'and @aria-disabled='false']"):
+        Log.info('Врач - ' + os.getenv('ECP_DOCTOR_SURNAME'))
+        is_case_doctor_are_current_doctor=True
     else:
-        Log.info('Врач - не пленкин')
-        is_plenkin=False
+        Log.info('Врач - ' + os.getenv('ECP_DOCTOR_SURNAME'))
+        is_case_doctor_are_current_doctor=False
         click_with_counter(
             click_xpath, ("//*[contains(text(),'Врач:')]/../../..//input[@type='text'and @aria-disabled='false']", 1, False ), 
-            webdriver.ActionChains(DriverManager.get_driver()).key_down(Keys.CONTROL).send_keys("a").key_up(Keys.CONTROL).send_keys(Keys.DELETE).send_keys('ПЛЕНКИН').perform, (), 
-            click_xpath, ("//*[contains(@class,'MedStaffFactCombo')]//*[contains(text(),'ПЛЕНКИН')]", 1, False) )
-            # click_xpath, ("//li[contains(@class,'x6-boundlist-item')][contains(text(),'ПЛЕНКИН')]", 1, False) )
-
-        # x6-boundlist-item MedStaffFactCombo x6-boundlist-selected
-        Log.info("Теперь - Пленкин, но is_plenkin=False")
+            webdriver.ActionChains(DriverManager.get_driver()).key_down(Keys.CONTROL).send_keys("a").key_up(Keys.CONTROL).send_keys(Keys.DELETE).send_keys(os.getenv('ECP_DOCTOR_SURNAME')).perform, (), 
+            click_xpath, ("//*[contains(@class,'MedStaffFactCombo')]//*[contains(text(),'"+os.getenv('ECP_DOCTOR_SURNAME')+"')]", 1, False) )
     Log.info('----------trying to close and sign ------------')
     click_class('x6-btn-icon-el x6-btn-icon-el-default-toolbar-small panicon-flag ')
     waiting()
     if click_text('Документы, требующие подписания',wait=10,crit=False):
-        if is_plenkin:
+        if is_case_doctor_are_current_doctor:
             click_text('Подписать мои документы',wait=10,crit=False)
             sign_windows_clicks()
             Log.info('----------closing again------------')
             click_class('x6-btn-icon-el x6-btn-icon-el-default-toolbar-small panicon-flag ')
         else:
-            Log.info('Not Plenkin - skipping signing osmotr')
+            Log.info('Not current doctor - skipping signing osmotr')
             click_text('Завершить случай',wait=10,crit=False)
     hover_n_click_text('Результат обращения:')
     counter=0
@@ -647,7 +614,7 @@ def fill_new_tap(sign=True):
         waiting()
         click_text('Завершить случай лечения')
     waiting()
-    if is_plenkin:
+    if is_case_doctor_are_current_doctor:
         if not click_xpath("//*[contains(text(),'Случай амбулаторного лечения')]/../../../../../../..//*[contains(@data-qtip,'Подписать документ')]",wait=10,crit=False):
             waiting(2)
             click_xpath("//*[contains(text(),'Случай амбулаторного лечения')]/../../../../../../..//*[contains(@data-qtip,'Документ не актуален')]") 
@@ -656,7 +623,7 @@ def fill_new_tap(sign=True):
             waiting(2)
         sign_windows_clicks()
     else:
-        Log.info('Not Plenkin - skipping signing case')
+        Log.info('Not current doctor - skipping signing case')
     click_xpath("//*[contains(@class,'x6-btn-icon-el x6-btn-icon-el-default-small emk16-2017')]/../../..//*[contains(@class,'taskbar-close-btn')]")
     waiting(2)
 def fill_invalid_fields():
