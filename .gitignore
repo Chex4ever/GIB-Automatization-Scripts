@@ -3,7 +3,11 @@ trashbox/
 YandexUserNOK
 YandexUserMonitoring
 ChromeProfiles
-
+202*
+*.ods
+!*template.xlsx
+*.xlsx
+*.tmp
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -211,3 +215,4 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
