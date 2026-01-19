@@ -5,6 +5,7 @@ YandexUserMonitoring
 ChromeProfiles
 202*
 *.ods
+*.bak
 !*template.xlsx
 *.xlsx
 *.tmp

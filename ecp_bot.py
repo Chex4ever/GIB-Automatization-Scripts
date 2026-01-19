@@ -22,7 +22,7 @@ tg_token=os.getenv('TELEGRAM_BOT_TOKEN')
 tg_chat_id=os.getenv('TELEGRAM_CHAT_ID')
 
 window_width='1920'
-window_height='2500'
+window_height='2400'
 window_zoom='0.4'
 
 class ClickError(Exception):
@@ -166,7 +166,7 @@ def ensure_extension_installed(driver, profile_dir):
     manifest_file = os.path.join(profile_dir, "Default/Extensions", extension_id, "*", "manifest.json")
     if glob.glob(manifest_file):
         return True
-    else:
+    else: #https://chrome.google.com/webstore/detail/pfhgbfnnjiafkhfdkmpiflachepdcjod
         driver.execute_script("window.open('https://chrome.google.com/webstore/detail/%s');" % extension_id)
         root = tk.Tk()
         root.withdraw()  # Скрываем основное окно Tkinter
@@ -509,6 +509,16 @@ def create_new_tap():
     Log.info('----------create_new_tap------------')
     need_tap_counter=0
     while True:
+        
+        # находим нужный элемент
+        element = DriverManager.get_driver().find_element(
+            By.XPATH, 
+            "//*[tr[td//text()[contains(., 'Нужен ТАП')]]]"
+        )
+        # Прокручиваем к элементу
+        DriverManager.get_driver().execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+        time.sleep(1)  # Даем время на прокрутку
+        
         click_xpath("//*[tr[td//text()[contains(., 'Нужен ТАП')]]]", wait=10, crit=False)
         if click_text('Создать ТАП', wait=10, crit=False):
             waiting()
@@ -688,7 +698,15 @@ def check_last_tap():
         return
     Log.info(f"Последний ТАП: {last_tap_text}")
     while True:
-        click_xpath("//*[tr[td//text()[contains(., '"+last_tap_text+"')]]]", wait=10, crit=False)
+        # находим нужный элемент
+        element = DriverManager.get_driver().find_element(
+            By.XPATH, 
+            "//*[tr[td//text()[contains(., '" + last_tap_text + "')]]]"
+        )
+        # Прокручиваем к элементу
+        DriverManager.get_driver().execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+        time.sleep(1)  # Даем время на прокрутку
+        click_xpath("//*[tr[td//text()[contains(., '" + last_tap_text + "')]]]", wait=10, crit=False)
         if click_text("Открыть ТАП", wait=10, crit=False):
             break
         Log.info("не получилось, повторяю...")
